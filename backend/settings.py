@@ -115,7 +115,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # 🌐 CORS (Frontend Connection)
-CORS_ALLOW_ALL_ORIGINS = True
+#CORS_ALLOW_ALL_ORIGINS = True
+# Django settings.py
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",            # for local dev
+    "https://dreamshelix-frontend.com", # production
+]
 
 
 # ⚡ CACHE (IMPORTANT FOR FRAUD DETECTION)
