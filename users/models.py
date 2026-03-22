@@ -16,10 +16,8 @@ from django.utils import timezone
 from django.conf import settings
 
 
-# 🔐 Generate unique referral code
+# 🔐 Generate unique referral code (FIXED: no circular import)
 def generate_referral_code():
-    from .models import CustomUser
-
     prefix = "DH"
     length = 6
 
@@ -66,18 +64,22 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    # 🔐 OTP validation
     def is_otp_valid(self):
         if not self.otp_created_at:
             return False
         return timezone.now() <= self.otp_created_at + timedelta(minutes=5)
 
+    # 🔐 Auto-generate referral code
     def save(self, *args, **kwargs):
         if not self.referral_code:
             self.referral_code = generate_referral_code()
         super().save(*args, **kwargs)
 
+    # 🔗 Referral link (FIXED: dynamic)
     def get_referral_link(self):
-        return f"http://localhost:3000/register?ref={self.referral_code}"
+        base_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+        return f"{base_url}/register?ref={self.referral_code}"
 
     def __str__(self):
         return self.email
@@ -145,13 +147,17 @@ class Withdrawal(models.Model):
         if self.amount > total_balance:
             raise ValueError("Insufficient balance")
 
-        # Deduct logic
+        # ✅ SAFE deduction logic (no negative values)
         if user.active_income >= self.amount:
             user.active_income -= self.amount
         else:
             remaining = self.amount - user.active_income
             user.active_income = 0
-            user.passive_income -= remaining
+
+            if user.passive_income >= remaining:
+                user.passive_income -= remaining
+            else:
+                raise ValueError("Insufficient passive balance")
 
         user.save()
 
@@ -159,7 +165,7 @@ class Withdrawal(models.Model):
         self.processed_at = timezone.now()
         self.save()
 
-        # Log transaction
+        # 💰 Log transaction
         Transaction.objects.create(
             user=user,
             amount=self.amount,

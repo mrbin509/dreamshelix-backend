@@ -31,10 +31,11 @@ User = get_user_model()
 
 
 # 🔐 REGISTER SERIALIZER
+# 🔐 REGISTER SERIALIZER
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
-    referral_code = serializers.CharField(write_only=True, required=True)
+    referral_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
@@ -45,9 +46,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = data.get('password')
         password2 = data.get('password2')
 
+        # ✅ Password match check
         if password != password2:
             raise serializers.ValidationError("Passwords do not match")
 
+        # 🚫 Fraud checks
         if is_disposable_email(email):
             raise serializers.ValidationError("Disposable emails are not allowed")
 
@@ -63,7 +66,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         ip = request.META.get('REMOTE_ADDR')
 
-        referral_code = validated_data.pop('referral_code')
+        # ✅ SAFE: optional referral
+        referral_code = validated_data.pop('referral_code', None)
         validated_data.pop('password2')
 
         email = validated_data.get('email')
@@ -72,11 +76,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         if is_ip_suspicious(ip):
             raise serializers.ValidationError("Too many accounts from this IP")
 
-        # 🚫 Self referral
-        if is_self_referral(email, referral_code):
-            raise serializers.ValidationError("You cannot refer yourself")
+        # 🚫 Self referral ONLY if referral exists
+        if referral_code:
+            if is_self_referral(email, referral_code):
+                raise serializers.ValidationError("You cannot refer yourself")
 
-        # Create user
+        # ✅ Create user
         user = User.objects.create_user(**validated_data)
 
         # 🔐 Generate OTP
@@ -93,8 +98,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             fail_silently=False,
         )
 
-        # 🧠 Store referral TEMPORARILY (IMPORTANT)
-        request.session['pending_referral'] = referral_code
+        # ✅ Store referral ONLY if provided
+        if referral_code:
+            request.session['pending_referral'] = referral_code
 
         return user
 

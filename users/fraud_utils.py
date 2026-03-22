@@ -51,6 +51,9 @@ def is_ip_suspicious(ip):
 
 # 🚫 Referral farming (time-based)
 def is_referral_farming(referrer):
+    if not referrer:
+        return False
+
     today = timezone.now() - timedelta(days=1)
 
     count = CustomUser.objects.filter(
@@ -63,6 +66,9 @@ def is_referral_farming(referrer):
 
 # 🚫 Multiple accounts detection (same domain abuse)
 def is_multi_account(email):
+    if not email or '@' not in email:
+        return False
+
     domain = email.split('@')[-1]
 
     count = CustomUser.objects.filter(
@@ -74,6 +80,10 @@ def is_multi_account(email):
 
 # 🚫 Self referral check
 def is_self_referral(email, referral_code):
+    # ✅ FIX: handle empty referral
+    if not referral_code:
+        return False
+
     try:
         user = CustomUser.objects.get(referral_code=referral_code)
         return user.email == email
@@ -83,11 +93,17 @@ def is_self_referral(email, referral_code):
 
 # 🚫 Duplicate referral (same user reused)
 def is_duplicate_referral(user, referrer):
+    if not user or not referrer:
+        return False
     return user.referred_by == referrer
 
 
 # ✅ Get valid referrer
 def get_valid_referrer(referral_code):
+    # ✅ FIX: avoid DB hit if empty
+    if not referral_code:
+        return None
+
     try:
         return CustomUser.objects.get(referral_code=referral_code)
     except CustomUser.DoesNotExist:

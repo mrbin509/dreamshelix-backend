@@ -116,40 +116,47 @@ class VerifyOTPView(APIView):
         user.otp = None
         user.save()
 
-        # 🔥 APPLY REFERRAL AFTER VERIFICATION
-        referral_code = request.session.get('pending_referral')
+        # 🔥 APPLY REFERRAL AFTER VERIFICATION (SAFE)
+        referral_code = request.session.get('pending_referral', None)
 
         if referral_code:
             referrer = get_valid_referrer(referral_code)
 
-            # ✅ IMPORTANT: Only paid users earn
+            # ✅ Check valid + paid
             if referrer and referrer.is_paid:
-                user.referred_by = referrer
-                user.save()
 
-                # 💰 Active income
-                referrer.active_income += 500
-                referrer.save()
+                # 🔒 Prevent duplicate linking
+                if not user.referred_by:
+                    user.referred_by = referrer
+                    user.save()
 
-                Transaction.objects.create(
-                    user=referrer,
-                    amount=500,
-                    transaction_type='ACTIVE',
-                    description=f"Referral bonus from {user.email}"
-                )
-
-                # 💰 Passive income
-                if referrer.referred_by:
-                    second = referrer.referred_by
-                    second.passive_income += 100
-                    second.save()
+                    # 💰 Active income
+                    referrer.active_income += 500
+                    referrer.save()
 
                     Transaction.objects.create(
-                        user=second,
-                        amount=100,
-                        transaction_type='PASSIVE',
-                        description=f"Passive income from {user.email}"
+                        user=referrer,
+                        amount=500,
+                        transaction_type='ACTIVE',
+                        description=f"Referral bonus from {user.email}"
                     )
+
+                    # 💰 Passive income (level 2)
+                    if referrer.referred_by:
+                        second = referrer.referred_by
+                        second.passive_income += 100
+                        second.save()
+
+                        Transaction.objects.create(
+                            user=second,
+                            amount=100,
+                            transaction_type='PASSIVE',
+                            description=f"Passive income from {user.email}"
+                        )
+
+        # ✅ CLEANUP session (VERY IMPORTANT)
+        if 'pending_referral' in request.session:
+            del request.session['pending_referral']
 
         return Response({"message": "Account verified successfully"})
 
