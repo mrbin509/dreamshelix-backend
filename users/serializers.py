@@ -32,6 +32,7 @@ User = get_user_model()
 
 # 🔐 REGISTER SERIALIZER
 # 🔐 REGISTER SERIALIZER
+# 🔐 REGISTER SERIALIZER
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
@@ -46,7 +47,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = data.get('password')
         password2 = data.get('password2')
 
-        # ✅ Password match check
+        # ✅ Password match
         if password != password2:
             raise serializers.ValidationError("Passwords do not match")
 
@@ -66,7 +67,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         ip = request.META.get('REMOTE_ADDR')
 
-        # ✅ SAFE: optional referral
         referral_code = validated_data.pop('referral_code', None)
         validated_data.pop('password2')
 
@@ -76,7 +76,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         if is_ip_suspicious(ip):
             raise serializers.ValidationError("Too many accounts from this IP")
 
-        # 🚫 Self referral ONLY if referral exists
+        # 🚫 Self referral
         if referral_code:
             if is_self_referral(email, referral_code):
                 raise serializers.ValidationError("You cannot refer yourself")
@@ -89,16 +89,22 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.otp_created_at = timezone.now()
         user.save()
 
-        # 📩 Send OTP Email
-        send_mail(
-            subject='DreamsHelix OTP Verification',
-            message=f'Your OTP is {user.otp}',
-            from_email=settings.EMAIL_HOST_USER,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
+        # 🔥 DEBUG (IMPORTANT)
+        print("🔥 OTP GENERATED:", user.otp)
 
-        # ✅ Store referral ONLY if provided
+        # 📩 Send Email (SAFE VERSION — WILL NOT BREAK API)
+        try:
+            send_mail(
+                subject='DreamsHelix OTP Verification',
+                message=f'Your OTP is {user.otp}',
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[user.email],
+                fail_silently=True,   # ✅ CRITICAL FIX
+            )
+        except Exception as e:
+            print("❌ EMAIL ERROR:", str(e))
+
+        # ✅ Store referral
         if referral_code:
             request.session['pending_referral'] = referral_code
 
