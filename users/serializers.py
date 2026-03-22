@@ -6,23 +6,20 @@ Serializers for DreamsHelix
 - Wallet + transaction serializers
 """
 
+import threading
 from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
-from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Transaction, Withdrawal
 from .fraud_utils import (
     is_disposable_email,
     is_suspicious_email,
     is_ip_suspicious,
-    is_referral_farming,
     is_multi_account,
-    get_valid_referrer,
     is_self_referral
 )
 from .utils import generate_otp
@@ -30,9 +27,22 @@ from .utils import generate_otp
 User = get_user_model()
 
 
-# 🔐 REGISTER SERIALIZER
-# 🔐 REGISTER SERIALIZER
-# 🔐 REGISTER SERIALIZER
+# 🚀 BACKGROUND EMAIL FUNCTION (CRITICAL FIX)
+def send_otp_email(email, otp):
+    try:
+        send_mail(
+            subject='DreamsHelix OTP Verification',
+            message=f'Your OTP is {otp}',
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        print("✅ OTP EMAIL SENT TO:", email)
+    except Exception as e:
+        print("❌ EMAIL ERROR:", str(e))
+
+
+# 🔐 REGISTER SERIALIZER (FINAL FIXED)
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
@@ -47,11 +57,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = data.get('password')
         password2 = data.get('password2')
 
-        # ✅ Password match
         if password != password2:
             raise serializers.ValidationError("Passwords do not match")
 
-        # 🚫 Fraud checks
         if is_disposable_email(email):
             raise serializers.ValidationError("Disposable emails are not allowed")
 
@@ -72,44 +80,35 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         email = validated_data.get('email')
 
-        # 🚫 IP fraud check
         if is_ip_suspicious(ip):
             raise serializers.ValidationError("Too many accounts from this IP")
 
-        # 🚫 Self referral
         if referral_code:
             if is_self_referral(email, referral_code):
                 raise serializers.ValidationError("You cannot refer yourself")
 
-        # ✅ Create user
+        # ✅ CREATE USER
         user = User.objects.create_user(**validated_data)
 
-        # 🔐 Generate OTP
+        # 🔐 GENERATE OTP
         user.otp = generate_otp()
         user.otp_created_at = timezone.now()
         user.save()
 
-        # 🔥 DEBUG (IMPORTANT)
         print("🔥 OTP GENERATED:", user.otp)
 
-        # 📩 Send Email (SAFE VERSION — WILL NOT BREAK API)
-        try:
-            send_mail(
-                subject='DreamsHelix OTP Verification',
-                message=f'Your OTP is {user.otp}',
-                from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[user.email],
-                fail_silently=True,   # ✅ CRITICAL FIX
-            )
-        except Exception as e:
-            print("❌ EMAIL ERROR:", str(e))
+        # 🚀 SEND EMAIL IN BACKGROUND (NON-BLOCKING)
+        threading.Thread(
+            target=send_otp_email,
+            args=(user.email, user.otp),
+            daemon=True
+        ).start()
 
-        # ✅ Store referral
+        # ✅ STORE REFERRAL
         if referral_code:
             request.session['pending_referral'] = referral_code
 
         return user
-
 
 # 🔐 LOGIN SERIALIZER
 class LoginSerializer(serializers.Serializer):

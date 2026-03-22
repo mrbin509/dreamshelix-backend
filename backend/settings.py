@@ -5,6 +5,11 @@ DreamsHelix Django Settings
 - JWT + PostgreSQL + Email + Razorpay
 """
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import os
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
@@ -115,9 +120,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # 🌐 CORS (Frontend Connection)
-#CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True
+
 # Django settings.py
-CORS_ALLOWED_ORIGINS = True
 
 
 # ⚡ CACHE (IMPORTANT FOR FRAUD DETECTION)
@@ -150,6 +155,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+
+EMAIL_TIMEOUT = 10
 
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
