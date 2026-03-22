@@ -117,10 +117,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 🌐 CORS (Frontend Connection)
 #CORS_ALLOW_ALL_ORIGINS = True
 # Django settings.py
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",            # for local dev
-    "https://dreamshelix-frontend.com", # production
-]
+CORS_ALLOWED_ORIGINS = True
 
 
 # ⚡ CACHE (IMPORTANT FOR FRAUD DETECTION)
@@ -156,7 +153,7 @@ EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
-
+print("EMAIL USER:", EMAIL_HOST_USER)
 
 # 💳 RAZORPAY
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'your_key_id')
