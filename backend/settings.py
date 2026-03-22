@@ -149,10 +149,10 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = os.getenv('EMAIL_USER', 'auth.dreamshelix@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS', 'oigu lxze jwef fdjh')
+EMAIL_HOST_USER = os.getenv('EMAIL_USER', 'your_email@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS', 'your_app_password')
 
 
 # 💳 RAZORPAY
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_test_SUDCQjRBfMW6qv')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', 'qlAUtflFydFsfz5LujetFFuz')
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'your_key_id')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', 'your_key_secret')
