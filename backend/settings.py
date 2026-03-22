@@ -7,6 +7,7 @@ DreamsHelix Django Settings
 import os
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -78,14 +79,9 @@ ASGI_APPLICATION = 'backend.asgi.application'
 
 # 🐘 DATABASE (PostgreSQL)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'dreamshelix_db',
-        'USER': 'dh_admin',
-        'PASSWORD': os.getenv('DB_PASSWORD', 'admin123'),
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL")
+    )
 }
 
 
